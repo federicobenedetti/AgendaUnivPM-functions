@@ -28,17 +28,29 @@ exports.newUserSignup = functions.auth.user().onCreate((user) => {
     admin.firestore().collection("studenti").doc(user.uid).set(nuovoStudente);
 });
 
-exports.addUserFeedback = functions.https.onCall(async (data, context) => {
-    const uid = context.auth?.uid;
-    const feedback = data.feedback;
+exports.addUserFeedback = functions.https.onCall((data, context) => {
+    // Checking that the user is authenticated.
+    if (!context.auth) {
+        // Throwing an HttpsError so that the client gets the error details.
+        throw new functions.https.HttpsError("failed-precondition", "The function must be called while authenticated.");
+    }
 
-    return admin.database().ref("/feedbacks").push({
-        feedback: feedback,
-        author: uid
-    }).then(() => {
-        console.log("Feedback received", feedback);
-    }).catch((error) => {
-        throw new functions.https.HttpsError("aborted", error.message, error);
+    const uid = context.auth?.uid || "";
+    const feedback = data.feedback as string;
+
+    if (feedback == null || feedback.length === 0) {
+        throw new functions.https.HttpsError("invalid-argument", "The function must be called with a non-empty feedback");
+    }
+
+    if (uid === "") {
+        throw new functions.https.HttpsError("invalid-argument", "The function must be called with a valid auth uid");
+    }
+
+    console.log("Aggiungo un nuovo feedback: " + feedback)
+    console.log("Per l'utente: " + uid);
+
+    admin.firestore().collection("feedbacks").doc(uid).update({
+        feedback: admin.firestore.FieldValue.arrayUnion(feedback)
     })
 });
 
