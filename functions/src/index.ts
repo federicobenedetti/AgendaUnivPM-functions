@@ -22,7 +22,7 @@ exports.newUserSignup = functions.auth.user().onCreate((user) => {
         corsi: [],
         uid: user.uid
     }
-    console.log("Nuovo utente creato!", user);
+    functions.logger.log("Nuovo utente creato!", user);
 
     admin.firestore().collection("students").doc(nuovoStudente.matricola).set(nuovoStudente);
 });
@@ -40,13 +40,13 @@ exports.getUserFromAuthUid = functions.https.onCall(async (data, context) => {
         throw new functions.https.HttpsError("invalid-argument", "The function must be called with a valid auth uid");
     }
 
-    console.log("E' stato richiesto l'utente per l'uid: " + uid);
+    functions.logger.log("E' stato richiesto l'utente per l'uid: " + uid);
 
     const student = await admin.firestore().collection("students").where("uid", "==", uid).get();
 
     const response = student.docs.map(doc => doc.data())[0];
 
-    console.log("Studente trovato: ", response);
+    functions.logger.log("Studente trovato: ", response);
     return response
 
 });
@@ -75,8 +75,8 @@ exports.addUserFeedback = functions.https.onCall((data, context) => {
         throw new functions.https.HttpsError("invalid-argument", "The function must be called with a valid auth uid");
     }
 
-    console.log("Aggiungo un nuovo feedback: " + feedback)
-    console.log("Per l'utente: " + uid + " con matricola: " + matricola);
+    functions.logger.log("Aggiungo un nuovo feedback: " + feedback)
+    functions.logger.log("Per l'utente: " + uid + " con matricola: " + matricola);
 
     admin.firestore().collection("feedbacks").doc(matricola).set({
         feedback: admin.firestore.FieldValue.arrayUnion(feedback)
@@ -96,7 +96,7 @@ exports.getAllCourses = functions.https.onCall((data, context) => {
         throw new functions.https.HttpsError("invalid-argument", "The function must be called with a valid auth uid");
     }
 
-    console.log("Richiesta di tutti i corsi per l'utente: " + uid)
+    functions.logger.log("Richiesta di tutti i corsi per l'utente: " + uid)
 
     const courses = admin.firestore().collection("courses").get();
     return courses;
@@ -117,7 +117,7 @@ exports.getAllCourses = functions.https.onCall((data, context) => {
     
 //     const matricola = data.matricola as string;
 
-//     console.log("Richiesta di tutti i corsi per l'utente: " + uid + " matricola: " + matricola)
+//     functions.logger.log("Richiesta di tutti i corsi per l'utente: " + uid + " matricola: " + matricola)
 // });
 
 /**
