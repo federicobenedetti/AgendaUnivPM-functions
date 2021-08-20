@@ -1,5 +1,6 @@
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
+import { Student } from "./classes";
 
 // // Start writing Firebase Functions
 // // https://firebase.google.com/docs/functions/typescript
@@ -83,7 +84,8 @@ exports.addUserFeedback = functions.https.onCall((data, context) => {
     }, { merge: true })
 });
 
-exports.getAllCourses = functions.https.onCall((data, context) => {
+exports.getCoursesFromCoursesId = functions.https.onCall(async (data, context) => {
+    functions.logger.log("getCoursesFromCoursesId")
     // Checking that the user is authenticated.
     if (!context.auth) {
         // Throwing an HttpsError so that the client gets the error details.
@@ -91,15 +93,27 @@ exports.getAllCourses = functions.https.onCall((data, context) => {
     }
 
     const uid = context.auth?.uid || "";
+    // Mi servirebbe anche la matricola per fare un double-check che i corsi richiesti siano effettivamente 
+    // i corsi a cui quella matricola è iscritta...
+    const corsi = data.corsi as string[];
 
     if (uid === "") {
         throw new functions.https.HttpsError("invalid-argument", "The function must be called with a valid auth uid");
     }
 
-    functions.logger.log("Richiesta di tutti i corsi per l'utente: " + uid)
+    if (corsi == null) {
+        throw new functions.https.HttpsError("invalid-argument", "The function must be called with at least one course");
+    }
 
-    const courses = admin.firestore().collection("courses").get();
-    return courses;
+    functions.logger.log("Richiesta di tutti i corsi per l'utente: " + uid);
+
+    const corsiUtente = await admin.firestore().collection("courses").where("id", "array-contains-any", corsi).get();
+
+    const response = corsiUtente.docs.map(doc => doc.data())
+
+    functions.logger.log("Corsi trovati: ", response);
+
+    return response;
 });
 
 exports.addCourseToStudent = functions.https.onCall((data, context) => {
@@ -121,6 +135,30 @@ exports.addCourseToStudent = functions.https.onCall((data, context) => {
     admin.firestore().collection("students").doc(matricola).set({
         corsi: admin.firestore.FieldValue.arrayUnion(idCorso)
     }, { merge: true })
+
+});
+
+exports.removeCourseFromStudent = functions.https.onCall(async (data, context) => {
+    // Checking that the user is authenticated.
+    if (!context.auth) {
+        // Throwing an HttpsError so that the client gets the error details.
+        throw new functions.https.HttpsError("failed-precondition", "The function must be called while authenticated.");
+    }
+
+    const uid = context.auth?.uid || "";
+
+    // const idCorso = data.courseId as string;
+    const matricola = data.matricola as string;
+
+    if (uid === "") {
+        throw new functions.https.HttpsError("invalid-argument", "The function must be called with a valid auth uid");
+    }
+
+    const corsiMatricola = await admin.firestore().collection("students").where("matricola", "==", matricola).get();
+
+    corsiMatricola.docs.forEach(d => {
+        functions.logger.log("Attempting to delete: ", d)
+    });
 
 });
 
@@ -154,25 +192,5 @@ export function randomInteger(min: number, max: number): number {
     return Math.floor(Math.random() * (max - min + 1)) + min;
 };
 
-export class Teacher {
-    teacherId!: string;
-    name!: string;
-    middleName!: string;
-    lastName!: string;
-}
 
-export class Course {
-    courseId!: string;
-    description!: string;
-    session!: string;
-    teacherId!: string;
-    title!: string;
-}
 
-export class Student {
-    matricola!: string;
-    telefono!: number;
-    annoCorso!: number;
-    corsi!: Course[];
-    uid!: string;
-}
