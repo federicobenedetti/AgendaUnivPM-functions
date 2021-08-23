@@ -1,6 +1,8 @@
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
 import { Student } from "./classes";
+import { AddOrRemoveCourseToStudentRequestDto, AddUserFeedbackRequestDto, GetAllUserCoursesDto } from "./dtos";
+import { firestore } from "firebase-admin";
 
 // // Start writing Firebase Functions
 // // https://firebase.google.com/docs/functions/typescript
@@ -49,10 +51,9 @@ exports.getUserFromAuthUid = functions.https.onCall(async (data, context) => {
 
     functions.logger.log("Studente trovato: ", response);
     return response
-
 });
 
-exports.addUserFeedback = functions.https.onCall((data, context) => {
+exports.addUserFeedback = functions.https.onCall((data: AddUserFeedbackRequestDto, context) => {
     // Checking that the user is authenticated.
     if (!context.auth) {
         // Throwing an HttpsError so that the client gets the error details.
@@ -60,8 +61,8 @@ exports.addUserFeedback = functions.https.onCall((data, context) => {
     }
 
     const uid = context.auth?.uid || "";
-    const feedback = data.feedback as string;
-    const matricola = data.matricola as string;
+    const feedback = data.feedback;
+    const matricola = data.matricola;
 
     if (feedback == null || feedback.length === 0) {
         throw new functions.https.HttpsError("invalid-argument", "The function must be called with a non-empty feedback");
@@ -70,7 +71,6 @@ exports.addUserFeedback = functions.https.onCall((data, context) => {
     if (matricola == null || matricola.length === 0) {
         throw new functions.https.HttpsError("invalid-argument", "The function must be called with a non-empty 'matricola'");
     }
-
 
     if (uid === "") {
         throw new functions.https.HttpsError("invalid-argument", "The function must be called with a valid auth uid");
@@ -84,7 +84,7 @@ exports.addUserFeedback = functions.https.onCall((data, context) => {
     }, { merge: true })
 });
 
-exports.getCoursesFromCoursesId = functions.https.onCall(async (data, context) => {
+exports.getCoursesFromCoursesId = functions.https.onCall(async (data: string[], context) => {
     functions.logger.log("getCoursesFromCoursesId")
     // Checking that the user is authenticated.
     if (!context.auth) {
@@ -93,9 +93,13 @@ exports.getCoursesFromCoursesId = functions.https.onCall(async (data, context) =
     }
 
     const uid = context.auth?.uid || "";
-    // Mi servirebbe anche la matricola per fare un double-check che i corsi richiesti siano effettivamente 
-    // i corsi a cui quella matricola è iscritta...
-    const corsi = data.corsi as string[];
+
+    data.forEach(e => {
+        functions.logger.log("Element: ", e)
+        functions.logger.log("Is string?" + typeof e === "string")
+    })
+
+    const corsi = data;
 
     if (uid === "") {
         throw new functions.https.HttpsError("invalid-argument", "The function must be called with a valid auth uid");
@@ -106,17 +110,33 @@ exports.getCoursesFromCoursesId = functions.https.onCall(async (data, context) =
     }
 
     functions.logger.log("Richiesta di tutti i corsi per l'utente: " + uid);
+    functions.logger.log("I corsi a cui l'utente è iscritto sono: ", corsi)
 
-    const corsiUtente = await admin.firestore().collection("courses").where("id", "array-contains-any", corsi).get();
+    const querySnapshot: firestore.QuerySnapshot<firestore.DocumentData>[] = [];
+    const listaCorsi: firestore.DocumentData[] = [];
 
-    const response = corsiUtente.docs.map(doc => doc.data())
+    for (const corso of corsi) {
+        functions.logger.log("Corso da ottenere: ", corso)
+        await admin.firestore().collection("courses").where("id", "==", corso).get().then(result => {
+            querySnapshot.push(result)
+            }
+        )
+    }
 
-    functions.logger.log("Corsi trovati: ", response);
+    querySnapshot.forEach(element => {
+        functions.logger.log("Element: ", element)
+        element.docs.map(d => {
+            functions.logger.log("Corso in lettura: ", d.data())
+            listaCorsi.push(d.data())
+        });
+    });
 
-    return response;
+    functions.logger.log("Corsi ottenuti: ", listaCorsi)
+
+    return listaCorsi;
 });
 
-exports.addCourseToStudent = functions.https.onCall((data, context) => {
+exports.addCourseToStudent = functions.https.onCall((data: AddOrRemoveCourseToStudentRequestDto, context) => {
     // Checking that the user is authenticated.
     if (!context.auth) {
         // Throwing an HttpsError so that the client gets the error details.
@@ -125,8 +145,8 @@ exports.addCourseToStudent = functions.https.onCall((data, context) => {
 
     const uid = context.auth?.uid || "";
 
-    const idCorso = data.courseId as string;
-    const matricola = data.matricola as string;
+    const idCorso = data.idCorso;
+    const matricola = data.matricola;
 
     if (uid === "") {
         throw new functions.https.HttpsError("invalid-argument", "The function must be called with a valid auth uid");
@@ -138,7 +158,7 @@ exports.addCourseToStudent = functions.https.onCall((data, context) => {
 
 });
 
-exports.removeCourseFromStudent = functions.https.onCall(async (data, context) => {
+exports.removeCourseFromStudent = functions.https.onCall(async (data: AddOrRemoveCourseToStudentRequestDto, context) => {
     // Checking that the user is authenticated.
     if (!context.auth) {
         // Throwing an HttpsError so that the client gets the error details.
@@ -147,8 +167,8 @@ exports.removeCourseFromStudent = functions.https.onCall(async (data, context) =
 
     const uid = context.auth?.uid || "";
 
-    // const idCorso = data.courseId as string;
-    const matricola = data.matricola as string;
+    // const idCorso = data.idCorso;
+    const matricola = data.matricola;
 
     if (uid === "") {
         throw new functions.https.HttpsError("invalid-argument", "The function must be called with a valid auth uid");
@@ -162,7 +182,7 @@ exports.removeCourseFromStudent = functions.https.onCall(async (data, context) =
 
 });
 
-exports.getAllStudentCourse = functions.https.onCall(async (data, context) => {
+exports.getAllStudentCourse = functions.https.onCall(async (data: GetAllUserCoursesDto, context) => {
     // Checking that the user is authenticated.
     if (!context.auth) {
         // Throwing an HttpsError so that the client gets the error details.
@@ -170,7 +190,7 @@ exports.getAllStudentCourse = functions.https.onCall(async (data, context) => {
     }
 
     const uid = context.auth?.uid || "";
-    const matricola = data.matricola as string;
+    const matricola = data.matricola;
 
     if (uid === "") {
         throw new functions.https.HttpsError("invalid-argument", "The function must be called with a valid auth uid");
