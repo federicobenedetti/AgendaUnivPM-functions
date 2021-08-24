@@ -156,6 +156,36 @@ exports.getTeachers = functions.https.onCall(async (data, context) => {
     return response
 });
 
+exports.getCourses = functions.https.onCall(async (data, context) => {
+    // Checking that the user is authenticated.
+    if (!context.auth) {
+        // Throwing an HttpsError so that the client gets the error details.
+        throw new functions.https.HttpsError("failed-precondition", "The function must be called while authenticated.");
+    }
+
+    const uid = context.auth?.uid || "";
+
+    if (uid === "") {
+        throw new functions.https.HttpsError("invalid-argument", "The function must be called with a valid auth uid");
+    }
+
+    
+    const courses = await admin.firestore().collection("courses").get();
+
+    const response: firestore.DocumentData[] = [];
+    
+    courses.docs.map(doc => 
+        response.push(doc.data())
+    );
+
+    functions.logger.log("Corsi ottenuti", response)
+
+    return response
+});
+
+
+
+
 exports.addCourseToStudent = functions.https.onCall((data: AddOrRemoveCourseToStudentRequestDto, context) => {
     // Checking that the user is authenticated.
     if (!context.auth) {
