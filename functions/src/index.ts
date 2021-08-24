@@ -85,7 +85,6 @@ exports.addUserFeedback = functions.https.onCall((data: AddUserFeedbackRequestDt
 });
 
 exports.getCoursesFromCoursesId = functions.https.onCall(async (data: string[], context) => {
-    functions.logger.log("getCoursesFromCoursesId")
     // Checking that the user is authenticated.
     if (!context.auth) {
         // Throwing an HttpsError so that the client gets the error details.
@@ -93,12 +92,6 @@ exports.getCoursesFromCoursesId = functions.https.onCall(async (data: string[], 
     }
 
     const uid = context.auth?.uid || "";
-
-    data.forEach(e => {
-        functions.logger.log("Element: ", e)
-        functions.logger.log("Is string?" + typeof e === "string")
-    })
-
     const corsi = data;
 
     if (uid === "") {
@@ -134,6 +127,33 @@ exports.getCoursesFromCoursesId = functions.https.onCall(async (data: string[], 
     functions.logger.log("Corsi ottenuti: ", listaCorsi)
 
     return listaCorsi;
+});
+
+exports.getTeachers = functions.https.onCall(async (data, context) => {
+    // Checking that the user is authenticated.
+    if (!context.auth) {
+        // Throwing an HttpsError so that the client gets the error details.
+        throw new functions.https.HttpsError("failed-precondition", "The function must be called while authenticated.");
+    }
+
+    const uid = context.auth?.uid || "";
+
+    if (uid === "") {
+        throw new functions.https.HttpsError("invalid-argument", "The function must be called with a valid auth uid");
+    }
+
+    
+    const teachers = await admin.firestore().collection("teachers").get();
+
+    const response: firestore.DocumentData[] = [];
+    
+    teachers.docs.map(doc => 
+        response.push(doc.data())
+    );
+
+    functions.logger.log("Professori ottenuti", response)
+
+    return response
 });
 
 exports.addCourseToStudent = functions.https.onCall((data: AddOrRemoveCourseToStudentRequestDto, context) => {
