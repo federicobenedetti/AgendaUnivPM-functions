@@ -156,6 +156,33 @@ exports.getTeachers = functions.https.onCall(async (data, context) => {
     return response
 });
 
+exports.getLessons = functions.https.onCall(async (data, context) => {
+    // Checking that the user is authenticated.
+    if (!context.auth) {
+        // Throwing an HttpsError so that the client gets the error details.
+        throw new functions.https.HttpsError("failed-precondition", "The function must be called while authenticated.");
+    }
+
+    const uid = context.auth?.uid || "";
+
+    if (uid === "") {
+        throw new functions.https.HttpsError("invalid-argument", "The function must be called with a valid auth uid");
+    }
+
+    
+    const lessons = await admin.firestore().collection("lessons").get();
+
+    const response: firestore.DocumentData[] = [];
+    
+    lessons.docs.map(doc => 
+        response.push(doc.data())
+    );
+
+    functions.logger.log("Lezioni ottenute", response)
+
+    return response
+});
+
 exports.getCourses = functions.https.onCall(async (data, context) => {
     // Checking that the user is authenticated.
     if (!context.auth) {
