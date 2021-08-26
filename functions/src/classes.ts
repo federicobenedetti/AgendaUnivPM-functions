@@ -19,4 +19,5 @@ export class Student {
     annoCorso!: number;
     corsi!: Course[];
     uid!: string;
+    situazioneTasse!: boolean;
 }

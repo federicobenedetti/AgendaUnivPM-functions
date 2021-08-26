@@ -20,9 +20,10 @@ admin.initializeApp();
 exports.newUserSignup = functions.auth.user().onCreate((user) => {
     const nuovoStudente: Student = {
         matricola: "S" + randomInteger(10000, 99999),
-        telefono: randomInteger(100000000, 999999999),
+        telefono: randomInteger(300000000, 999999999),
         annoCorso: randomInteger(1, 5),
         corsi: [],
+        situazioneTasse: Math.random() < 0.8,
         uid: user.uid
     }
     functions.logger.log("Nuovo utente creato!", user);
@@ -244,7 +245,7 @@ exports.removeCourseFromStudent = functions.https.onCall(async (data: AddOrRemov
 
     const uid = context.auth?.uid || "";
 
-    // const idCorso = data.idCorso;
+    const idCorso = data.idCorso;
     const matricola = data.matricola;
 
     if (uid === "") {
@@ -252,11 +253,13 @@ exports.removeCourseFromStudent = functions.https.onCall(async (data: AddOrRemov
     }
 
     const corsiMatricola = await admin.firestore().collection("students").where("matricola", "==", matricola).get();
+    
+    functions.logger.log("Corsi matricola trovati:", corsiMatricola)
+    functions.logger.log("Corso da rimuovere:", idCorso)
 
-    corsiMatricola.docs.forEach(d => {
-        functions.logger.log("Attempting to delete: ", d)
-    });
-
+    admin.firestore().collection("students").doc(matricola).set({
+        corsi: admin.firestore.FieldValue.arrayRemove(idCorso)
+    }, { merge: true })
 });
 
 exports.getAllStudentCourse = functions.https.onCall(async (data: GetAllUserCoursesDto, context) => {
