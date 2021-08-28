@@ -284,6 +284,27 @@ exports.getAllStudentCourse = functions.https.onCall(async (data: GetAllUserCour
     return response;
 });
 
+exports.getCalendarLessons = functions.https.onCall(async (data, context) => {
+    // Checking that the user is authenticated.
+    if (!context.auth) {
+        // Throwing an HttpsError so that the client gets the error details.
+        throw new functions.https.HttpsError("failed-precondition", "The function must be called while authenticated.");
+    }
+
+    const uid = context.auth?.uid || "";
+
+    if (uid === "") {
+        throw new functions.https.HttpsError("invalid-argument", "The function must be called with a valid auth uid");
+    }
+
+    const dbRef = await admin.firestore().collection("calendar_lessons").get();
+        
+    const response = dbRef.docs.map(doc => doc.data())[0]["lessons"];
+
+    functions.logger.log("Lezioni trovate: ", response);
+    return response;
+});
+
 
 /**
  * Returns an integer random number between min (included) and max (included)
