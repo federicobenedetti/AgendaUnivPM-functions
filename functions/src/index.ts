@@ -4,18 +4,19 @@ import { Student } from "./classes";
 import { AddOrRemoveCourseToStudentRequestDto, AddUserFeedbackRequestDto, GetAllUserCoursesDto } from "./dtos";
 import { firestore } from "firebase-admin";
 
-// // Start writing Firebase Functions
-// // https://firebase.google.com/docs/functions/typescript
-//
-// export const helloWorld = functions.https.onRequest((request, response) => {
-//   functions.logger.info("Hello logs!", {structuredData: true});
-//   response.send("Hello from Firebase!");
-// });
-
 admin.initializeApp();
 
 /**
- * Function called when a new user sign up
+ * API chiamata quando un nuovo utente procede al login
+ * 
+ * Verranno generati i campi che poi verranno visualizzati nell'app
+ * Idealmente questi campi vengono generati con logiche ben più complesse (ad esempio la matricola:
+ * nessuno mi assicura che sia univoca, ed è un problema, però per il contesto dell'app ce lo facciamo andar bene)
+ * 
+ * I dati sensibili dell'utente (Telefono, corso, situazione tasse, ...) dovrebbero essere
+ * reperiti da sistemi informativi nazionali (CAF, ...), non autogenerati
+ * 
+ * Sono dati mock, ovviamente
  */
 exports.newUserSignup = functions.auth.user().onCreate((user) => {
     const nuovoStudente: Student = {
@@ -31,6 +32,12 @@ exports.newUserSignup = functions.auth.user().onCreate((user) => {
     admin.firestore().collection("students").doc(nuovoStudente.matricola).set(nuovoStudente);
 });
 
+/**
+ * API per poter richiedere l'utente che ha effettuato il login
+ * dato lo UID che Firebase genera automaticamente ogni volta che viene
+ * effettuato il login con un nuovo account google
+ * 
+ */
 exports.getUserFromAuthUid = functions.https.onCall(async (data, context) => {
     // Checking that the user is authenticated.
     if (!context.auth) {
@@ -54,6 +61,10 @@ exports.getUserFromAuthUid = functions.https.onCall(async (data, context) => {
     return response
 });
 
+/**
+ * API per poter aggiungere un feedback nella collezione dei feedback
+ * data la matricola e la stringa rappresentante il feedback scritto dall'utente
+ */
 exports.addUserFeedback = functions.https.onCall((data: AddUserFeedbackRequestDto, context) => {
     // Checking that the user is authenticated.
     if (!context.auth) {
@@ -85,6 +96,11 @@ exports.addUserFeedback = functions.https.onCall((data: AddUserFeedbackRequestDt
     }, { merge: true })
 });
 
+
+/**
+ * API per poter richiedere la lista dei corsi registrati su Firebase
+ * dato un array di ID di corsi
+ */
 exports.getCoursesFromCoursesId = functions.https.onCall(async (data: string[], context) => {
     // Checking that the user is authenticated.
     if (!context.auth) {
@@ -130,6 +146,10 @@ exports.getCoursesFromCoursesId = functions.https.onCall(async (data: string[], 
     return listaCorsi;
 });
 
+/**
+ * API per poter richiedere la lista dei professori
+ * registrati su Firebase
+ */
 exports.getTeachers = functions.https.onCall(async (data, context) => {
     // Checking that the user is authenticated.
     if (!context.auth) {
@@ -157,6 +177,10 @@ exports.getTeachers = functions.https.onCall(async (data, context) => {
     return response
 });
 
+/**
+ * API per poter richiedere la lista delle lezioni
+ * registrate su Firebase
+ */
 exports.getLessons = functions.https.onCall(async (data, context) => {
     // Checking that the user is authenticated.
     if (!context.auth) {
@@ -184,6 +208,11 @@ exports.getLessons = functions.https.onCall(async (data, context) => {
     return response
 });
 
+
+/**
+ * API per poter richiedere la lista dei corsi 
+ * registrati su Firebase
+ */
 exports.getCourses = functions.https.onCall(async (data, context) => {
     // Checking that the user is authenticated.
     if (!context.auth) {
@@ -212,8 +241,10 @@ exports.getCourses = functions.https.onCall(async (data, context) => {
 });
 
 
-
-
+/**
+ * API per poter aggiungere un determinato corso a un determinato studente
+ * dato l'id del corso e la matricola
+ */
 exports.addCourseToStudent = functions.https.onCall((data: AddOrRemoveCourseToStudentRequestDto, context) => {
     // Checking that the user is authenticated.
     if (!context.auth) {
@@ -236,6 +267,10 @@ exports.addCourseToStudent = functions.https.onCall((data: AddOrRemoveCourseToSt
 
 });
 
+/**
+ * API per poter rimuovere un determinato corso a un determinato studente
+ * dato l'id del corso e la matricola
+ */
 exports.removeCourseFromStudent = functions.https.onCall(async (data: AddOrRemoveCourseToStudentRequestDto, context) => {
     // Checking that the user is authenticated.
     if (!context.auth) {
@@ -262,6 +297,10 @@ exports.removeCourseFromStudent = functions.https.onCall(async (data: AddOrRemov
     }, { merge: true })
 });
 
+/**
+ * API per poter richiedere la lista di tutti i corsi
+ * alla quale lo studente si è iscritto
+ */
 exports.getAllStudentCourse = functions.https.onCall(async (data: GetAllUserCoursesDto, context) => {
     // Checking that the user is authenticated.
     if (!context.auth) {
@@ -284,6 +323,10 @@ exports.getAllStudentCourse = functions.https.onCall(async (data: GetAllUserCour
     return response;
 });
 
+/**
+ * API per poter richiedere la lista di tutte le lezioni A CALENDARIO
+ * registrate su Firebase
+ */
 exports.getCalendarLessons = functions.https.onCall(async (data, context) => {
     // Checking that the user is authenticated.
     if (!context.auth) {
