@@ -11,6 +11,7 @@ export class Course {
     session!: string;
     teacherId!: string;
     title!: string;
+    lessonIds!: string[];
 }
 
 export class Student {
